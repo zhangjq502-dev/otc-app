@@ -1,0 +1,22 @@
+{
+  "name": "otc-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "OTC 交易 App 的 Node 后端：REST API + WebSocket 行情推送",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "2.8.5",
+    "ethers": "6.13.4",
+    "express": "4.21.2",
+    "jsonwebtoken": "9.0.2",
+    "ws": "8.18.0"
+  }
+}

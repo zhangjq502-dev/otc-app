@@ -1,0 +1,114 @@
+{
+	"pages": [
+		{
+			"path": "pages/market/market",
+			"style": {
+				"navigationBarTitleText": "行情",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/otc/otc",
+			"style": {
+				"navigationBarTitleText": "OTC 交易",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/mine/mine",
+			"style": {
+				"navigationBarTitleText": "我的",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/detail/detail",
+			"style": {
+				"navigationBarTitleText": ""
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
+		}
+	],
+	"subPackages": [
+		{
+			"root": "pages-order",
+			"pages": [
+				{
+					"path": "create/create",
+					"style": {
+						"navigationBarTitleText": "下单"
+					}
+				},
+				{
+					"path": "detail/detail",
+					"style": {
+						"navigationBarTitleText": "订单详情"
+					}
+				},
+				{
+					"path": "list/list",
+					"style": {
+						"navigationBarTitleText": "我的订单",
+						"enablePullDownRefresh": true
+					}
+				}
+			]
+		},
+		{
+			"root": "pages-tools",
+			"pages": [
+				{
+					"path": "monitor/monitor",
+					"style": {
+						"navigationBarTitleText": "监控面板",
+						"enablePullDownRefresh": true
+					}
+				}
+			]
+		}
+	],
+	"preloadRule": {
+		"pages/otc/otc": {
+			"network": "all",
+			"packages": ["pages-order"]
+		}
+	},
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "OTC",
+		"navigationBarBackgroundColor": "#ffffff",
+		"backgroundColor": "#f5f5f5"
+	},
+	"tabBar": {
+		"color": "#8f8f94",
+		"selectedColor": "#f0b90b",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "white",
+		"list": [
+			{
+				"pagePath": "pages/market/market",
+				"text": "行情",
+				"iconPath": "static/tabbar/market-normal.png",
+				"selectedIconPath": "static/tabbar/market-active.png"
+			},
+			{
+				"pagePath": "pages/otc/otc",
+				"text": "OTC",
+				"iconPath": "static/tabbar/otc-normal.png",
+				"selectedIconPath": "static/tabbar/otc-active.png"
+			},
+			{
+				"pagePath": "pages/mine/mine",
+				"text": "我的",
+				"iconPath": "static/tabbar/mine-normal.png",
+				"selectedIconPath": "static/tabbar/mine-active.png"
+			}
+		]
+	},
+	"uniIdRouter": {}
+}
