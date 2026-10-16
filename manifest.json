@@ -65,5 +65,12 @@
     "mp-toutiao" : {
         "usingComponents" : true
     },
-    "vueVersion" : "3"
+    "vueVersion" : "3",
+    "h5" : {
+        "title" : "OTC 交易",
+        "router" : {
+            "mode" : "hash",
+            "base" : "./"
+        }
+    }
 }

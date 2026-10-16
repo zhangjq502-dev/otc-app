@@ -88,6 +88,17 @@ npm test
 
 > 修改 `pages.json`（tabBar、分包、新页面）后需要停止并重新运行，热更新不会重新判断这些配置。
 
+## 部署到 Render
+
+线上只部署一个 Node 服务：后端同时托管 H5 页面（`server/public`），页面、接口、WebSocket 同域名，无需处理跨域；H5 线上环境自动使用当前域名和 `https` / `wss`（见 `config/index.ts`）。
+
+1. **打包 H5**：HBuilderX 中「发行 → 网站-PC Web或手机H5」，把产物 `unpackage/dist/build/web` 里的文件复制到 `server/public`（覆盖旧文件）后提交。前端改动后都需要重新打包这一步
+2. **推送到 GitHub**
+3. **在 Render 创建服务**：登录 [Render](https://render.com) → New → Blueprint → 选择本仓库，Render 会读取根目录的 `render.yaml` 自动配置（Node 22、`npm start`、健康检查 `/api/health`、随机生成 `JWT_SECRET`）
+4. 部署完成后访问 Render 分配的 `https://xxx.onrender.com`
+
+> 免费实例 15 分钟无访问会休眠，再次打开需要约 30～50 秒唤醒；数据保存在内存中，重启或休眠后订单会清空（演示账号保留）。
+
 ## 实现要点
 
 **WebSocket 订阅与生命周期**：tab 页不会销毁，所以行情页在 `onShow` 订阅、`onHide` 取消，切走后不再接收推送；详情页不是 tab 页，在 `onLoad` 订阅、`onUnload` 取消。多个页面订阅同一频道时只向服务端发一次 `sub`，全部取消后才 `unsub`。

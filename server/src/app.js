@@ -1,5 +1,7 @@
 import express from 'express'
 import cors from 'cors'
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import jwt from 'jsonwebtoken'
 import { randomBytes } from 'node:crypto'
 import { verifyMessage, isAddress, getAddress } from 'ethers'
@@ -132,6 +134,20 @@ export function createApp({ store, market }) {
   })
 
   app.get('/api/track/stats', (req, res) => ok(res, store.trackStats()))
+
+  // 线上部署：托管 H5 打包产物（server/public），页面与接口同域名，无需跨域
+  const publicDir = fileURLToPath(new URL('../public', import.meta.url))
+  if (existsSync(publicDir)) {
+    app.use(
+      express.static(publicDir, {
+        maxAge: '7d',
+        // index.html 不缓存：重新部署后能立即拿到引用新文件名的页面
+        setHeaders: (res, file) => {
+          if (file.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache')
+        }
+      })
+    )
+  }
 
   app.use((req, res) => res.status(404).json({ code: 404, message: '接口不存在', data: null }))
 

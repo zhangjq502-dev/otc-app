@@ -1,0 +1,1 @@
+import{U as o,r as e,_ as r,c as s,A as a,$ as l}from"./index-D9qnNy5i.js";const n=o("settings",(()=>{const o=e(r("colorMode")||"green-up"),n=s((()=>"green-up"===o.value?"#0ecb81":"#f6465d")),u=s((()=>"green-up"===o.value?"#f6465d":"#0ecb81"));return a(o,(o=>l("colorMode",o))),{colorMode:o,upColor:n,downColor:u,trendColor:o=>o>=0?n.value:u.value}}));export{n as u};

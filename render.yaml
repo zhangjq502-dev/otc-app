@@ -1,0 +1,17 @@
+# Render Blueprint：一个 Node 服务同时提供 REST API、WebSocket 和 H5 页面（server/public）
+services:
+  - type: web
+    name: otc-app
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: JWT_SECRET
+        generateValue: true
