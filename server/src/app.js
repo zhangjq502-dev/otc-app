@@ -187,7 +187,7 @@ export function createApp({ store, market }) {
         maxAge: '7d',
         // index.html 不缓存：重新部署后能立即拿到引用新文件名的页面
         setHeaders: (res, file) => {
-          if (file.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache')
+          if (/\.(html|js|css)$/.test(file)) res.setHeader('Cache-Control', 'no-cache')
         }
       })
     )

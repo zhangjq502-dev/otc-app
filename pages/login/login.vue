@@ -19,7 +19,6 @@
 				<text class="muted">{{ isRegister ? '已有账号？' : '还没有账号？' }}</text>
 				<text class="link" @click="isRegister = !isRegister">{{ isRegister ? '去登录' : '去注册' }}</text>
 			</view>
-			<view class="demo muted" @click="fillDemo">演示账号：demo / 123456（点击填入）</view>
 		</view>
 	</view>
 </template>
@@ -33,12 +32,6 @@ const username = ref('')
 const password = ref('')
 const isRegister = ref(false)
 const loading = ref(false)
-
-function fillDemo() {
-	username.value = 'demo'
-	password.value = '123456'
-	isRegister.value = false
-}
 
 async function submit() {
 	if (!username.value || !password.value) {
@@ -113,9 +106,4 @@ async function submit() {
   color: #c99400;
 }
 
-.demo {
-  margin-top: 48rpx;
-  font-size: 24rpx;
-  text-align: center;
-}
 </style>
