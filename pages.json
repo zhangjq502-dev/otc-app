@@ -62,6 +62,7 @@
 		{
 			"root": "pages-tools",
 			"pages": [
+ {"path":"admin/admin","style":{"navigationBarTitleText":"用户与模拟资产管理"}},
 				{
 					"path": "monitor/monitor",
 					"style": {

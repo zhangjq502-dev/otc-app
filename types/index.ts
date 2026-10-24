@@ -81,6 +81,7 @@ export interface Asset {
 }
 
 export interface User {
+  role?: 'admin' | 'user'
   id: string
   username: string
   nickname: string

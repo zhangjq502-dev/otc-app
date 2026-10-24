@@ -107,6 +107,13 @@ export class Store extends EventEmitter {
     return user
   }
 
+  adminUsers(actorId, { page = 1, search = '' } = {}) {
+    if (this.getUser(actorId).role !== 'admin') throw new AppError(403, '需要管理员权限', 403)
+    page = Math.max(1, Math.floor(Number(page) || 1))
+    const users = [...this.users.values()].filter(u => u.username.includes(String(search).slice(0,64))).sort((a,b) => b.createdAt-a.createdAt)
+    return { total: users.length, page, pageSize: 20, users: users.slice((page-1)*20,page*20).map(u=>this.publicUser(u)) }
+  }
+
   adminCredit(actorId, { username, coin, amount }) {
     if (this.getUser(actorId).role !== 'admin') throw new AppError(403, '需要管理员权限', 403)
     if (!OTC_COINS.includes(coin)) throw new AppError(400, '币种不支持')

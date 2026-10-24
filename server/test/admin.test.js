@@ -10,6 +10,10 @@ test('admin account reserved, password verified and only admin can credit simula
  assert.throws(()=>store.createUser('admin','123456'))
  const user=store.createUser('credit_user','123456')
  assert.throws(()=>store.adminCredit(user.id,{username:user.username,coin:'USDT',amount:10}),{code:403})
+ assert.throws(()=>store.adminUsers(user.id),{code:403})
+ const listing=store.adminUsers(admin.id,{search:'credit_user'})
+ assert.equal(listing.total,1)
+ assert.equal(listing.users[0].password,undefined)
  const previous=user.assets.USDT.available
  const result=store.adminCredit(admin.id,{username:user.username,coin:'USDT',amount:'20.01'})
  assert.equal(result.user.assets.USDT.available,previous+20.01)

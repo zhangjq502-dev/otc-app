@@ -42,6 +42,17 @@ async function submit() {
 	try {
 		if (isRegister.value) await userStore.register(username.value, password.value)
 		else await userStore.login(username.value, password.value)
+        if (userStore.user?.role === 'admin') {
+            // #ifdef H5
+            sessionStorage.setItem('otc_admin_session', userStore.token)
+            location.assign('/admin.html')
+            return
+            // #endif
+            // #ifndef H5
+            uni.redirectTo({ url: '/pages-tools/admin/admin' })
+            return
+            // #endif
+        }
 		uni.showToast({ title: '登录成功', icon: 'success' })
 		// 有上一页就返回（例如从 OTC 下单跳过来），否则回到「我的」
 		setTimeout(() => {

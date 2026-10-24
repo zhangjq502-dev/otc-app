@@ -126,6 +126,8 @@ export function createApp({ store, market }) {
     ok(res, store.publicUser(user))
   })
 
+  app.get('/api/admin/users', auth, async (req,res) => ok(res, await store.adminUsers(req.userId,req.query)))
+
   app.post('/api/admin/credits', auth, async (req,res) => {
     ok(res, await store.adminCredit(req.userId,req.body))
   })

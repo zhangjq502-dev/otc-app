@@ -228,7 +228,7 @@ export class PostgresStore extends EventEmitter {
   trackStats() { return Store.prototype.trackStats.call(this) }
   async shutdown() { clearInterval(this.worker); await this.pool.end() }
 }
-for (const method of ['getUser','login','listAds','getAd','getOrder','listOrders']) {
+for (const method of ['getUser','login','listAds','getAd','getOrder','listOrders','adminUsers']) {
   PostgresStore.prototype[method] = function(...args) { return this.execute(method,args) }
 }
 for (const method of ['createUser','createOrder','markPaid','release','complete','cancelOrder','bindWallet','adminCredit']) {
