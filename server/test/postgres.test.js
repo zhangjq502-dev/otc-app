@@ -112,6 +112,17 @@ test('PostgreSQL durability, concurrency, rollback and deadline recovery', { ski
       await assert.rejects(store.createOrder(empty.id,{adId:ad.id,fiatAmount:100,payMethod:ad.payMethods[0]}),{code:2007})
     } finally { config.initialAssets = old }
   })
+  await t.test('admin credit persists balance and actor audit in transaction', async () => {
+    const adminUser = await store.login('admin','123456')
+    assert.equal(adminUser.role,'admin')
+    const before = (await store.getUser(user.id)).assets.USDT.available
+    await store.adminCredit(adminUser.id,{username:user.username,coin:'USDT',amount:'25.50'})
+    assert.equal((await store.getUser(user.id)).assets.USDT.available,before+25.5)
+    await assert.rejects(store.adminCredit(user.id,{username:user.username,coin:'USDT',amount:1}),{code:403})
+    const rows=await store.pool.query('SELECT action,available_delta FROM asset_ledger WHERE action=$1',[`adminCredit:${adminUser.id}`])
+    assert.equal(rows.rowCount,1)
+    assert.equal(Number(rows.rows[0].available_delta),25.5)
+  })
   await t.test('ledger is persisted and API user does not expose password', async () => {
     assert.ok((await store.pool.query('SELECT count(*) FROM asset_ledger')).rows[0].count > 0)
     assert.equal(store.publicUser(await store.getUser(user.id)).password,undefined)

@@ -126,6 +126,10 @@ export function createApp({ store, market }) {
     ok(res, store.publicUser(user))
   })
 
+  app.post('/api/admin/credits', auth, async (req,res) => {
+    ok(res, await store.adminCredit(req.userId,req.body))
+  })
+
   // ---------- 行情 ----------
   app.get('/api/market/tickers', async (req, res) => ok(res, market.getTickers()))
 

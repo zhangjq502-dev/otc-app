@@ -68,6 +68,11 @@ export class PostgresStore extends EventEmitter {
           await store.save(db, seed, new Map(), 'seed')
         }
       })
+      await store.transaction(async db => {
+        const state = await store.load(db), before = structuredClone(state.users)
+        state.ensureAdmin()
+        await store.save(db,state,before,'bootstrapAdmin')
+      })
       await store.sweep()
       store.worker = setInterval(() => {
         if (store.sweeping) return
@@ -164,7 +169,7 @@ export class PostgresStore extends EventEmitter {
       const before = structuredClone(state.users)
       state.on('order', order => { state.changedOrderId = order.id; notifications.push(structuredClone(order)) })
       const value = state[method](...args)
-      if (write) await this.save(db,state,before,method)
+      if (write) await this.save(db,state,before,method === 'adminCredit' ? `adminCredit:${args[0]}` : method)
       if (key) await db.query('INSERT INTO idempotency_keys VALUES($1,$2,$3,$4)',[args[0],key,args[1],value.id])
       return value
     })
@@ -226,6 +231,6 @@ export class PostgresStore extends EventEmitter {
 for (const method of ['getUser','login','listAds','getAd','getOrder','listOrders']) {
   PostgresStore.prototype[method] = function(...args) { return this.execute(method,args) }
 }
-for (const method of ['createUser','createOrder','markPaid','release','complete','cancelOrder','bindWallet']) {
+for (const method of ['createUser','createOrder','markPaid','release','complete','cancelOrder','bindWallet','adminCredit']) {
   PostgresStore.prototype[method] = function(...args) { return this.execute(method,args,true) }
 }

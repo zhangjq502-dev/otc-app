@@ -65,6 +65,8 @@ export class Store extends EventEmitter {
   }
 
   seed() {
+    this.ensureAdmin()
+
     // 演示账号用固定 id：后端重启后旧 token 依然有效，演示时不用反复登录
     if (config.seedDemo) this.createUser('demo', '123456', 'demo-0000-0000-0001')
     let id = 1
@@ -94,7 +96,31 @@ export class Store extends EventEmitter {
   }
 
   // ---------- 用户 ----------
-  createUser(username, password, id = randomUUID()) {
+  ensureAdmin() {
+    const existing = [...this.users.values()].find(u => u.username === 'admin')
+    if (existing) {
+      if (existing.role !== 'admin') throw new Error('Reserved admin username already exists; manual review required')
+      return existing
+    }
+    const user = this.createUser('admin', process.env.ADMIN_PASSWORD || '123456', randomUUID(), true)
+    user.role = 'admin'
+    return user
+  }
+
+  adminCredit(actorId, { username, coin, amount }) {
+    if (this.getUser(actorId).role !== 'admin') throw new AppError(403, '需要管理员权限', 403)
+    if (!OTC_COINS.includes(coin)) throw new AppError(400, '币种不支持')
+    const value = Number(amount)
+    if (!Number.isFinite(value) || value <= 0 || value > 1000000 || !new Decimal(value).eq(new Decimal(value).toDecimalPlaces(coinDigits(coin)))) throw new AppError(400, '数量必须大于零、不超过100万且符合币种精度')
+    const user = [...this.users.values()].find(u => u.username === username)
+    if (!user) throw new AppError(404, '用户不存在', 404)
+    const balance = user.assets[coin]
+    balance.available = round(new Decimal(balance.available).plus(value), coinDigits(coin))
+    return { user: this.publicUser(user), coin, amount: value }
+  }
+
+  createUser(username, password, id = randomUUID(), internal = false) {
+    if (String(username).toLowerCase() === 'admin' && !internal) throw new AppError(1003, '该用户名不可注册')
     if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) {
       throw new AppError(1001, '用户名需为 3-16 位字母、数字或下划线')
     }
