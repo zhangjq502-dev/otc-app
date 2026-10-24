@@ -1,5 +1,5 @@
-// 内存数据存储：用户、资产、OTC 广告、订单、埋点
-// 演示项目不接数据库，重启后数据重置
+// Domain state used by the PostgreSQL repository and local development.
+import Decimal from 'decimal.js'
 import { EventEmitter } from 'node:events'
 import { randomUUID, scryptSync, randomBytes, timingSafeEqual } from 'node:crypto'
 import { config } from './config.js'
@@ -51,22 +51,22 @@ export const ORDER_STATUS = {
 }
 
 const coinDigits = (coin) => (coin === 'USDT' ? 2 : 6)
-const round = (n, d) => Number(Number(n).toFixed(d))
+const round = (n, d) => new Decimal(n).toDecimalPlaces(d, Decimal.ROUND_HALF_UP).toNumber()
 
 export class Store extends EventEmitter {
-  constructor() {
+  constructor({ seed = true } = {}) {
     super()
     this.users = new Map()
     this.ads = []
     this.orders = new Map()
     this.timers = new Map()
     this.events = []
-    this.seed()
+    if (seed) this.seed()
   }
 
   seed() {
     // 演示账号用固定 id：后端重启后旧 token 依然有效，演示时不用反复登录
-    this.createUser('demo', '123456', 'demo-0000-0000-0001')
+    if (config.seedDemo) this.createUser('demo', '123456', 'demo-0000-0000-0001')
     let id = 1
     for (const coin of OTC_COINS) {
       MERCHANTS.forEach((m, i) => {
@@ -98,8 +98,8 @@ export class Store extends EventEmitter {
     if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) {
       throw new AppError(1001, '用户名需为 3-16 位字母、数字或下划线')
     }
-    if (typeof password !== 'string' || password.length < 6) {
-      throw new AppError(1002, '密码至少 6 位')
+    if (typeof password !== 'string' || password.length < 6 || password.length > 128) {
+      throw new AppError(1002, '密码需为 6-128 位')
     }
     if ([...this.users.values()].some((u) => u.username === username)) {
       throw new AppError(1003, '用户名已存在')
@@ -113,9 +113,9 @@ export class Store extends EventEmitter {
       createdAt: Date.now(),
       // 资产：available 可用，frozen 冻结（卖单挂起中）
       assets: {
-        USDT: { available: 1000, frozen: 0 },
-        BTC: { available: 0.05, frozen: 0 },
-        ETH: { available: 1.2, frozen: 0 }
+        USDT: { available: config.initialAssets ? 1000 : 0, frozen: 0 },
+        BTC: { available: config.initialAssets ? 0.05 : 0, frozen: 0 },
+        ETH: { available: config.initialAssets ? 1.2 : 0, frozen: 0 }
       }
     }
     this.users.set(user.id, user)
@@ -174,7 +174,8 @@ export class Store extends EventEmitter {
     // 实付金额以用户输入为准；币数量向下取整，避免平台多给币
     const fiatTotal = round(total, 2)
     const factor = 10 ** coinDigits(ad.coin)
-    const amount = Math.floor((fiatTotal / ad.price) * factor) / factor
+    const amount = new Decimal(fiatTotal).div(ad.price).mul(factor).floor().div(factor).toNumber()
+    if (amount <= 0) throw new AppError(2002, '金额不足以购买最小交易数量')
     if (amount > ad.available) throw new AppError(2005, '商家可交易数量不足')
     const hasActive = [...this.orders.values()].some(
       (o) => o.userId === userId && o.status === ORDER_STATUS.PENDING && o.side === ad.side
@@ -184,14 +185,14 @@ export class Store extends EventEmitter {
     if (ad.side === 'sell') {
       const asset = user.assets[ad.coin] ?? (user.assets[ad.coin] = { available: 0, frozen: 0 })
       if (asset.available < amount) throw new AppError(2007, `${ad.coin} 可用余额不足`)
-      asset.available = round(asset.available - amount, coinDigits(ad.coin))
-      asset.frozen = round(asset.frozen + amount, coinDigits(ad.coin))
+      asset.available = round(new Decimal(asset.available).minus(amount), coinDigits(ad.coin))
+      asset.frozen = round(new Decimal(asset.frozen).plus(amount), coinDigits(ad.coin))
     }
-    ad.available = round(ad.available - amount, coinDigits(ad.coin))
+    ad.available = round(new Decimal(ad.available).minus(amount), coinDigits(ad.coin))
 
     const now = Date.now()
     const order = {
-      id: `${now}${Math.floor(Math.random() * 900 + 100)}`,
+      id: randomUUID(),
       userId,
       adId: ad.id,
       side: ad.side,
@@ -219,7 +220,7 @@ export class Store extends EventEmitter {
     this.schedule(order.id, 'expire', config.orderPayTimeout, () =>
       this.cancelOrder(order.id, null, '超时未付款，系统自动取消')
     )
-    if (order.side === 'sell') {
+    if (config.simulateMerchant && order.side === 'sell') {
       // 模拟商家（买家）付款
       this.schedule(order.id, 'merchantPay', config.merchantPayDelay, () => this.markPaid(order.id, null))
     }
@@ -242,12 +243,13 @@ export class Store extends EventEmitter {
   // userId 为 null 表示系统/商家操作
   markPaid(id, userId) {
     const order = this.getOrder(userId, id)
+    if (order.status === ORDER_STATUS.PENDING && order.expireAt <= Date.now()) throw new AppError(3008, '订单已超时')
     if (order.status !== ORDER_STATUS.PENDING) throw new AppError(3002, '订单状态已变化，请刷新')
     if (userId && order.side !== 'buy') throw new AppError(3003, '卖单需等待对方付款')
     order.status = ORDER_STATUS.PAID
     order.paidAt = Date.now()
     this.clear(order.id, 'expire')
-    if (order.side === 'buy') {
+    if (config.simulateMerchant && order.side === 'buy') {
       // 模拟商家确认收款后放币
       this.schedule(order.id, 'release', config.merchantReleaseDelay, () => this.complete(order.id, null))
     }
@@ -270,9 +272,9 @@ export class Store extends EventEmitter {
     const d = coinDigits(order.coin)
     const asset = user.assets[order.coin] ?? (user.assets[order.coin] = { available: 0, frozen: 0 })
     if (order.side === 'buy') {
-      asset.available = round(asset.available + order.amount, d)
+      asset.available = round(new Decimal(asset.available).plus(order.amount), d)
     } else {
-      asset.frozen = round(asset.frozen - order.amount, d)
+      asset.frozen = round(new Decimal(asset.frozen).minus(order.amount), d)
     }
     order.status = ORDER_STATUS.COMPLETED
     order.completedAt = Date.now()
@@ -287,11 +289,11 @@ export class Store extends EventEmitter {
     if (userId && order.side === 'sell') throw new AppError(3007, '卖单请等待对方处理或超时自动取消')
     const ad = this.getAd(order.adId)
     const d = coinDigits(order.coin)
-    ad.available = round(ad.available + order.amount, d)
+    ad.available = round(new Decimal(ad.available).plus(order.amount), d)
     if (order.side === 'sell') {
       const asset = this.getUser(order.userId).assets[order.coin]
-      asset.frozen = round(asset.frozen - order.amount, d)
-      asset.available = round(asset.available + order.amount, d)
+      asset.frozen = round(new Decimal(asset.frozen).minus(order.amount), d)
+      asset.available = round(new Decimal(asset.available).plus(order.amount), d)
     }
     order.status = ORDER_STATUS.CANCELLED
     order.cancelReason = reason

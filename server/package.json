@@ -5,18 +5,22 @@
   "type": "module",
   "description": "OTC 交易 App 的 Node 后端：REST API + WebSocket 行情推送",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
+    "dev": "node --env-file-if-exists=.env --watch src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
     "test": "node --test test/*.test.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "cors": "2.8.5",
+    "decimal.js": "^10.6.0",
     "ethers": "6.13.4",
     "express": "4.21.2",
+    "express-rate-limit": "^7.5.1",
     "jsonwebtoken": "9.0.2",
+    "pg": "^8.23.1",
     "ws": "8.18.0"
-  }
+  },
+  "packageManager": "pnpm@12.4.2"
 }

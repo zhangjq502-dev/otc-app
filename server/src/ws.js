@@ -5,7 +5,7 @@ import { WebSocketServer } from 'ws'
 import { verifyToken } from './app.js'
 
 export function attachWebSocket(server, { store, market }) {
-  const wss = new WebSocketServer({ server, path: '/ws' })
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 })
 
   const send = (ws, msg) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg))
@@ -16,7 +16,8 @@ export function attachWebSocket(server, { store, market }) {
     ws.userId = null
     ws.isAlive = true
 
-    ws.on('message', (raw) => {
+    ws.on('message', async (raw) => {
+      try {
       let msg
       try {
         msg = JSON.parse(raw.toString())
@@ -28,11 +29,15 @@ export function attachWebSocket(server, { store, market }) {
         case 'ping':
           return send(ws, { op: 'pong', time: Date.now() })
         case 'auth': {
-          ws.userId = verifyToken(msg.token)
+          ws.userId = null
+          const uid = verifyToken(msg.token)
+          if (uid) { await store.getUser(uid); ws.userId = uid }
           return send(ws, { op: 'auth', ok: Boolean(ws.userId) })
         }
         case 'sub': {
           if (typeof msg.channel !== 'string') return
+          if (!['tickers', 'orders'].includes(msg.channel) && !/^kline:[A-Z0-9]+:(1m|5m|15m|1h|4h)$/.test(msg.channel)) return
+          if (ws.channels.size >= 32) return
           ws.channels.add(msg.channel)
           send(ws, { op: 'subscribed', channel: msg.channel })
           // 订阅后立即推一次快照，避免页面等待下一次 tick
@@ -45,6 +50,7 @@ export function attachWebSocket(server, { store, market }) {
         default:
           return send(ws, { op: 'error', message: `未知操作 ${msg.op}` })
       }
+      } catch { send(ws, { op: 'error', message: '请求无效或登录已失效' }) }
     })
   })
 

@@ -2,7 +2,9 @@
 
 一个模拟数字货币 OTC（场外法币交易）平台的跨端应用：一套 uniapp（Vue3 + TypeScript）代码同时运行在 **H5** 和 **App**，配套 Node.js 后端提供 REST API 与 WebSocket 实时推送。
 
-> 行情、商家、订单均为后端模拟数据，仅用于学习与演示。
+> 已接入 PostgreSQL 持久化。生产部署必须配置数据库；行情仍为模拟数据，未接入真实资金或支付渠道。
+
+数据库部署、环境变量、开关与验证步骤见 [后端持久化与部署](docs/后端持久化与部署.md)。
 
 | 行情 | K 线 | OTC 广告 |
 | --- | --- | --- |
@@ -53,7 +55,8 @@
 ├── pages-tools/            分包：监控面板
 └── server/                 Node 后端
     ├── src/market.js       行情引擎：随机游走生成价格，维护 1 分钟 K 线并聚合多周期
-    ├── src/store.js        内存数据：用户、资产冻结、广告库存、订单状态机与定时器
+    ├── src/store.js        订单状态机与资产领域逻辑
+    ├── src/postgres-store.js PostgreSQL 事务、流水、幂等与到期恢复
     ├── src/app.js          REST API 与统一错误处理
     ├── src/ws.js           WebSocket 频道推送与心跳
     └── test/               接口测试
@@ -63,15 +66,15 @@
 
 ### 1. 启动后端
 
-需要 Node.js 18+。
+需要 Node.js 22+。
 
 ```bash
 cd server
-npm install
+npx --yes pnpm@12.4.2 install --frozen-lockfile
 npm run dev
 ```
 
-看到 `OTC server running at http://localhost:3700` 即成功。演示账号：`demo / 123456`。
+看到 `OTC server running at http://localhost:3700` 即成功。本地开发未配置数据库时使用内存模式；正式部署使用 server/.env.example 配置 PostgreSQL。
 
 运行测试：
 
@@ -97,7 +100,7 @@ npm test
 3. **在 Render 创建服务**：登录 [Render](https://render.com) → New → Blueprint → 选择本仓库，Render 会读取根目录的 `render.yaml` 自动配置（Node 22、`npm start`、健康检查 `/api/health`、随机生成 `JWT_SECRET`）
 4. 部署完成后访问 Render 分配的 `https://xxx.onrender.com`
 
-> 免费实例 15 分钟无访问会休眠，再次打开需要约 30～50 秒唤醒；数据保存在内存中，重启或休眠后订单会清空（演示账号保留）。
+> 免费实例 15 分钟无访问会休眠，再次打开需要约 30～50 秒唤醒；配置 PostgreSQL 后，账号、资产与订单不会随 Web 服务重启清空；数据库需独立维护和备份。
 
 ## 实现要点
 
@@ -134,6 +137,7 @@ WebSocket：`ws://<host>:3700/ws`，发送 `{ op: 'sub', channel }` 订阅，频
 
 ## 已知限制
 
-- 后端数据保存在内存中，重启后订单与新注册用户会清空（演示账号保留）
+- 未配置数据库的本地开发仍使用内存；生产环境必须配置 DATABASE_URL
+- 数据库适配器采用全局事务锁和状态加载，适合当前单实例项目；扩容前需改为局部行锁与跨实例消息机制
 - App 端钱包绑定未接入 WalletConnect，目前只在 H5 端可用
-- 商家行为（付款、放币）由后端定时器模拟
+- 行情为模拟数据；生产默认关闭模拟商家、初始样例数据与赠送余额，正式商家后台和资金接入尚未实现
